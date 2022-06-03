@@ -1,10 +1,10 @@
 from __future__ import annotations
 from typing import Tuple # this is needed to enable python to define return type aas current class
 
-import cv2
+import cv2 as cv
 import numpy as np
 
-from core.cv2_image import CV2Image
+from core.cv_image import CVImage
 from .features_extractor_informal_interface import FeaturesExtractorInformalInterface
 
 '''Implements HOG feature extractor from OpenCV, that 
@@ -12,7 +12,7 @@ is, alike skikit library, dose include voting system.
 see https://stackoverflow.com/questions/28390614/opencv-hogdescripter-python?noredirect=1&lq=1
 also, here we implement "over blocks, bin normalization"
 Note: all sizes should be in (width x height), since cv2 uses this format'''
-class CV2HOGFeatures(FeaturesExtractorInformalInterface):
+class CVHOGFeatures(FeaturesExtractorInformalInterface):
     
     def __init__(self) -> None:
         
@@ -22,7 +22,7 @@ class CV2HOGFeatures(FeaturesExtractorInformalInterface):
                 
         self.orientations_bins_count = 9
 
-        self.normalization_timming_threshold = 0.2
+        self.normalization_trimming_threshold = 0.2
         self.gaussian_smoothing_sigma = -1
         self.padding = (0, 0)
 
@@ -36,7 +36,7 @@ class CV2HOGFeatures(FeaturesExtractorInformalInterface):
         self._cropped_image_to_cells_size_in_pixels = (-1, -1)
 
     def _create_descriptor(self, image_array) -> None:
-        '''calc the correct parameters for discriptor and creates 
+        '''calc the correct parameters for descriptor and creates 
         it, there is no need to calc it for every image.'''
         self._block_size_in_pixels = (self.block_size_in_cells[0] * self.cell_size_in_pixels[0],
                                       self.block_size_in_cells[1] * self.cell_size_in_pixels[1])
@@ -51,7 +51,7 @@ class CV2HOGFeatures(FeaturesExtractorInformalInterface):
         self._cropped_image_to_cells_size_in_pixels = (self._image_size_in_cells[0] * self.cell_size_in_pixels[0],
                                                        self._image_size_in_cells[1] * self.cell_size_in_pixels[1])
         # see https://docs.opencv.org/4.5.3/d5/d33/structcv_1_1HOGDescriptor.html
-        self._descriptor = cv2.HOGDescriptor(self._cropped_image_to_cells_size_in_pixels,
+        self._descriptor = cv.HOGDescriptor(self._cropped_image_to_cells_size_in_pixels,
                                              self._block_size_in_pixels,
                                              self._stride_in_pixels,
                                              self.cell_size_in_pixels,
@@ -60,7 +60,7 @@ class CV2HOGFeatures(FeaturesExtractorInformalInterface):
                                              self.gaussian_smoothing_sigma)
         
     def _get_image_covering_blocks_count(self, dimension):
-        '''calcs the number of overlaping blocks count that will cover 
+        '''calcs the number of overlapping blocks count that will cover 
         the image, for an arbitrary image, cell, block, and stride seizes.'''
         blocks = int(self._image_size_in_cells[dimension] / self.stride_in_cells[dimension])
         # this is a special case when stride is one
@@ -75,7 +75,7 @@ class CV2HOGFeatures(FeaturesExtractorInformalInterface):
             self._create_descriptor(image_array)
 
         # this will get us per block, per cell our bins, so we need to reshape the histogram.
-        # then transpose to make it of a stadart indexing, i.e. by rows 
+        # then transpose to make it of a standard indexing, i.e. by rows 
         # see https://stackoverflow.com/questions/22373707/why-does-opencvs-hog-descriptor-return-so-many-values
         return self._descriptor\
                                 .compute(image_array,  self._stride_in_pixels, self.padding)\
@@ -87,7 +87,7 @@ class CV2HOGFeatures(FeaturesExtractorInformalInterface):
                                 .transpose((1, 0, 2, 3, 4))
 
                                 
-    def get_normalized_cell_features(self, image_array) -> CV2HOGFeatures:
+    def get_normalized_cell_features(self, image_array) -> CVHOGFeatures:
         '''- returns returns per block normalized cell histogram.
         - When called multiple times, it assumes that every call is done 
         for same image size, and class parameters.
@@ -106,7 +106,7 @@ class CV2HOGFeatures(FeaturesExtractorInformalInterface):
                                     self._image_size_in_cells[0], 
                                     self.orientations_bins_count))
 
-        # count cells according to how many times they are repeated within overlaping boxes
+        # count cells according to how many times they are repeated within overlapping boxes
         cell_repetition_count = np.zeros((self._image_size_in_cells[1], 
                                             self._image_size_in_cells[0], 
                                             1))
@@ -114,8 +114,8 @@ class CV2HOGFeatures(FeaturesExtractorInformalInterface):
 
         # this can be imagined as if we sliding two copies of the obtained above 
         # block histogram grids, by the size of the blocks, and summing the bins 
-        # of the cells that coinside, in the same time, we count how many times 
-        # each cell is repeated (which differs, due to block overlaping, 
+        # of the cells that coincide, in the same time, we count how many times 
+        # each cell is repeated (which differs, due to block overlapping, 
         # especially for border cells), to finally divide the sum by this count.
         # inspired by https://rsdharra.com/blog/lesson/25.html
         for y_cell_block_index in range(self.block_size_in_cells[1]):
@@ -150,19 +150,12 @@ class CV2HOGFeatures(FeaturesExtractorInformalInterface):
         
         return self
         
-    def extract(self, image:CV2Image) -> CV2HOGFeatures:
+    def extract(self, image:CVImage) -> CVHOGFeatures:
         '''a help function to unify feature extraction interface'''
         return self.get_normalized_cell_features(image.image_array)
 
-    # def feature_space_size(self) -> Tuple[int]:
-    #     '''a help function to unify features interface, returns cells count as (height x width)'''
-    #     return (self._image_size_in_cells[1], self._image_size_in_cells[0])
     
-    # def feature_space_size(self) -> int:
-    #     '''a help function to unify features interface, returns cells count as (height x width)'''
-    #     return 5555
-    
-    def show(self, orientation_bin_index = 3) -> None:
+    def plot(self, orientation_bin_index = 3) -> None:
         import matplotlib.pyplot as plt
 
         # plot a map for a particular bin

@@ -1,11 +1,7 @@
 import numpy as np
-import pandas as pd
-import os
-import cv2
 
-
-from .rectangel import Rectangel
-from .cv2_image import CV2Image
+from rectangle import Rectangle
+from cv_image import CVImage
 
 '''This class represents a video frame, along of the 
 needed Gyro info, ground truth etc...'''
@@ -16,7 +12,7 @@ class VideoFrame():
         self.video_file = video_file
         
         self.frame_index = frame_index
-        self.image = CV2Image(frame_image)
+        self.image = CVImage(frame_image)
 
         self.frame_tick = -1
 
@@ -24,4 +20,4 @@ class VideoFrame():
         self.header = []
         self.camera_sensor_info = []
 
-        self.ground_truth_rectangel: Rectangel = None
+        self.ground_truth_rectangle: Rectangle = None
